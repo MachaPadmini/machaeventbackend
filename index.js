@@ -1,65 +1,57 @@
+
 const express = require("express");
 const cors = require("cors");
 const { MongoClient } = require("mongodb");
-const path = require("path");
-require("dotenv").config();
-
+const path = require('path');
 const app = express();
-const port = process.env.PORT || 5000;
+const port = 5000;
+const fs = require('fs');
 
-// Middleware
+// Enable CORS
 app.use(cors());
-app.use(express.json()); // To handle JSON body payloads
-app.use(express.static(path.join(__dirname, "public"))); // Serve static files
 
-// MongoDB URI and Client Initialization
-const uri = process.env.MONGO_URI || "your-default-mongo-uri";
-const client = new MongoClient(uri, {
-  tls: true, // Ensure TLS is used for secure communication
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
+// MongoDB connection URI
+const uri =
+  "mongodb+srv://machapdmn30798:padmini6899@eventsclusster.3voip.mongodb.net/?retryWrites=true&w=majority&appName=EventsClusster";
+const client = new MongoClient(uri);
 
 async function connectMongoDB() {
   try {
     await client.connect();
-    console.log("✅ Connected to MongoDB");
+    console.log("Connected to MongoDB");
   } catch (error) {
-    console.error("❌ Error connecting to MongoDB:", error);
-    process.exit(1); // Exit the process if unable to connect
+    console.error("Error connecting to MongoDB:", error);
   }
 }
 
-// API Endpoints
-
-// Fetch data from MongoDB
+// Define API route
 app.get("/api", async (req, res) => {
   try {
-    const db = client.db("eventsdb");
-    const collection = db.collection("eventscollection");
-    const results = await collection.find({}).toArray();
-    res.status(200).json(results);
+    const cursor = client
+      .db("eventsdb")
+      .collection("eventscollection")
+      .find({});
+    const results = await cursor.toArray();
+    res.json(results);
   } catch (error) {
-    console.error("❌ Error fetching data:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error("Error fetching data:", error);
+    res.status(500).send("Internal Server Error");
   }
 });
 
-// Serve the homepage
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
+app.get('/', (req, res) => {
+    const filePath = path.join(__dirname, 'public','index.html'); 
+    fs.readFile(filePath, 'utf8', (err, data) => {
+      if (err) {
+        return res.status(500).send('Failed to load the page');
+      }
+      res.send(data); // Send the HTML content
+    });
+  });
 
-// Start the Server
+// Start the server
 app.listen(port, async () => {
   await connectMongoDB();
-  console.log(`🚀 Server running at http://localhost:${port}`);
+  console.log(`Server running at http://localhost:${port}`);
 });
 
-// Graceful Shutdown
-process.on("SIGINT", async () => {
-  console.log("⏳ Closing MongoDB connection...");
-  await client.close();
-  console.log("✅ MongoDB connection closed.");
-  process.exit(0);
-});
